@@ -5,6 +5,8 @@ import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import { Role } from 'src/common/enum/role.enum';
+import { User } from 'src/user/entity/user.entity';
+import { JwtPayload } from './types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
@@ -15,15 +17,36 @@ export class AuthService {
   ) {}
 
   async signIn(username: string, password: string): Promise<any> {
-    const user = await this.userService.findOne({ username: username });
+    let user: User | null = null;
+
+    if (username.includes('@')) {
+      user = await this.userService.findOne({ email: username });
+    } else {
+      user = await this.userService.findOne({ username: username });
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Tài khoản chưa được kích hoạt');
+    }
 
     const isMatch = user && (await bcrypt.compare(password, user.password));
     if (!isMatch) {
-      throw new UnauthorizedException('Mật khẩu hoặc không chính xác');
+      throw new UnauthorizedException(
+        'Tên người dùng hoặc mật khẩu không chính xác',
+      );
     }
 
     const refreshToken = this.jwtService.sign(
-      { username: user.username, id: user.id },
+      {
+        username: user.username,
+        id: user.id,
+        email: user.email,
+        isActive: user.isActive,
+      },
       { expiresIn: '7d' },
     );
 
@@ -36,7 +59,7 @@ export class AuthService {
       refreshToken: hashedRefreshToken,
     } as UpdateUserDto);
 
-    const payload = {
+    const payload: JwtPayload = {
       username: user.username,
       email: user.email,
       id: user.id,
@@ -44,7 +67,7 @@ export class AuthService {
     };
 
     return {
-      message: 'Sign in successful',
+      message: 'Đăng nhập thành công',
       data: {
         accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
         refreshToken,
@@ -57,11 +80,15 @@ export class AuthService {
     password: string,
     email: string,
   ): Promise<any> {
-    const existingUser = await this.userService.findOne({ username: username });
+    const existingUser = await this.userService.findOne({
+      username: username,
+      isActive: true,
+    });
 
     if (existingUser) {
       throw new UnauthorizedException('Người dùng đã tồn tại');
     }
+    // Đã check tài khoản có tồn tại và đang active hay chưa, nếu có tồn tại nhưng chưa active thì vẫn cho phép đăng ký và gửi lại email kích hoạt
 
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -75,7 +102,7 @@ export class AuthService {
       password: hashedPassword,
       email,
       isActive: false,
-      role: Role.USER,
+      role: Role.SECRETARY,
       otp,
       otpExpireAt,
     };
@@ -85,31 +112,43 @@ export class AuthService {
 
     return {
       message:
-        'User created successfully, please check your email to activate your account.',
+        'Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản của bạn.',
       data: newUser,
     };
   }
 
   async verifyOtp(email: string, otp: number): Promise<any> {
-    const user = await this.userService.findOne({ email: email, otp: otp });
+    if (!email || !otp) {
+      throw new UnauthorizedException('Email và OTP là bắt buộc');
+    }
 
+    const user = await this.userService.findOne({ email });
+    console.log('User found for OTP verification:', user);
     if (!user) {
-      throw new UnauthorizedException('Invalid OTP');
+      throw new UnauthorizedException('Email không tồn tại');
     }
 
-    if (user.otpExpireAt && user.otpExpireAt < new Date()) {
-      throw new UnauthorizedException('OTP has expired');
+    if (user.isActive) {
+      throw new UnauthorizedException('Tài khoản đã được kích hoạt');
     }
 
-    await this.userService.activateUser(user.id);
+    if (!user.otpExpireAt || user.otpExpireAt < new Date()) {
+      throw new UnauthorizedException('OTP đã hết hạn');
+    }
+
+    if (user.otp !== otp) {
+      throw new UnauthorizedException('OTP không hợp lệ');
+    }
 
     await this.userService.update(user.id, {
+      isActive: true,
       otp: null,
       otpExpireAt: null,
     } as unknown as UpdateUserDto);
 
     return {
-      message: 'Account activated successfully',
+      message: 'Kích hoạt tài khoản thành công',
+      data: {},
     };
   }
 
@@ -118,11 +157,31 @@ export class AuthService {
       await this.userService.update(id, { refreshToken: '' } as UpdateUserDto);
     } catch (error) {
       console.error('Error signing out:', error);
-      throw new UnauthorizedException('Sign out failed');
+      throw new UnauthorizedException('Đăng xuất thất bại');
     }
 
     return {
-      message: 'Sign out successful',
+      message: 'Đăng xuất thành công',
+      data: {},
     };
+  }
+
+  async getProfile(id: string): Promise<any> {
+    const user = await this.userService.findOne({ id });
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    console.log('User profile:', user);
+
+    const formatUser = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      isActive: user.isActive,
+      role: user.role,
+    };
+
+    return formatUser;
   }
 }

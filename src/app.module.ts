@@ -9,6 +9,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ContractModule } from './contract/contract.module';
 
 @Module({
   imports: [
@@ -21,11 +22,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get('DB_USERNAME'),
-        password: config.get('DB_PASSWORD'),
-        database: config.get('DB_NAME'),
+        host: config.getOrThrow('DB_HOST'),
+        port: config.getOrThrow<number>('DB_PORT'),
+        username: config.getOrThrow('DB_USERNAME'),
+        password: config.getOrThrow('DB_PASSWORD'),
+        database: config.getOrThrow('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         autoLoadEntities: true,
@@ -36,12 +37,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         transport: {
-          host: config.get('MAIL_HOST'),
-          port: config.get<number>('MAIL_PORT'),
+          host: config.getOrThrow('MAIL_HOST'),
+          port: config.getOrThrow<number>('MAIL_PORT'),
           secure: true,
           auth: {
-            user: config.get('MAIL_USERNAME'),
-            pass: config.get('MAIL_PASSWORD'),
+            user: config.getOrThrow('MAIL_USERNAME'),
+            pass: config.getOrThrow('MAIL_PASSWORD'),
           },
         },
       }),
@@ -49,6 +50,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     AuthModule,
     UserModule,
     MailModule,
+    ContractModule,
   ],
   controllers: [AppController],
   providers: [
