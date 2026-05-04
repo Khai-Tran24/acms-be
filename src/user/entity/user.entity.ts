@@ -9,7 +9,7 @@ import {
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column({ unique: true })
@@ -27,7 +27,7 @@ export class User {
   @Column({ default: true })
   isActive!: boolean;
 
-  @Column({ type: 'enum', enum: Role, default: Role.USER })
+  @Column({ type: 'enum', enum: Role })
   role!: Role;
 
   @Column({ nullable: true })

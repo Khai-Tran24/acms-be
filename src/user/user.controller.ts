@@ -13,6 +13,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { GetUserQueryDto } from './dto/get-user-query.dto';
+import { Role } from 'src/common/enum/role.enum';
+import { Roles } from 'src/common/decorators/role.decorator';
 
 @ApiBearerAuth()
 @Controller('user')
@@ -25,21 +27,25 @@ export class UserController {
   }
 
   @Get()
+  @Roles(Role.ADMIN)
   findAll(@Query() query: GetUserQueryDto) {
     return this.userService.findAll(query);
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
   findOne(@Param('id') id: string) {
     return this.userService.findOne({ id });
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }

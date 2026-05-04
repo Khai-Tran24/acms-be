@@ -1,4 +1,8 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../enum/role.enum';
 import { ROLES_KEY } from '../decorators/role.decorator';
@@ -20,6 +24,12 @@ export class RolesGuard {
       user?: { roles?: Role[] };
     }>();
     const userRoles = request.user?.roles ?? [];
+
+    if (!userRoles) {
+      throw new ForbiddenException(
+        'Bạn không có quyền truy cập tài nguyên này',
+      );
+    }
     return requiredRoles.some((role) => userRoles.includes(role));
   }
 }

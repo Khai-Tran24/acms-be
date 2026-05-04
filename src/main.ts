@@ -15,6 +15,7 @@ async function bootstrap() {
   app.use(helmet());
 
   const config = new DocumentBuilder()
+    .addBearerAuth()
     .setTitle('Hệ thống quản lý hồ sơ đấu giá')
     .setDescription(
       'Tài liệu API cho hệ thống quản lý hồ sơ đấu giá, bao gồm các chức năng như quản lý người dùng, xác thực và các tính năng liên quan đến đấu giá.',
