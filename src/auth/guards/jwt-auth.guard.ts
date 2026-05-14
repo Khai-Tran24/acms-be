@@ -34,6 +34,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         )
       );
     }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return user;
   }

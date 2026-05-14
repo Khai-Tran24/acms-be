@@ -46,6 +46,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         isActive: user.isActive,
+        role: user.role,
       },
       { expiresIn: '7d' },
     );
@@ -62,6 +63,7 @@ export class AuthService {
     const payload: JwtPayload = {
       username: user.username,
       email: user.email,
+      role: user.role,
       id: user.id,
       isActive: user.isActive,
     };

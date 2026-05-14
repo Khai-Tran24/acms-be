@@ -21,15 +21,16 @@ export class RolesGuard {
     }
 
     const request = context.switchToHttp().getRequest<{
-      user?: { roles?: Role[] };
+      user?: { role?: Role };
     }>();
-    const userRoles = request.user?.roles ?? [];
+
+    const userRoles = request.user?.role ?? [];
 
     if (!userRoles) {
       throw new ForbiddenException(
         'Bạn không có quyền truy cập tài nguyên này',
       );
     }
-    return requiredRoles.some((role) => userRoles.includes(role));
+    return requiredRoles.some((role) => userRoles === role);
   }
 }
