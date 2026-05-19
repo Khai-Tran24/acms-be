@@ -21,11 +21,7 @@ export class AuthController {
   @Post('signup')
   @Public()
   async signUp(@Body() signUpDto: SignUpDto): Promise<any> {
-    return this.authService.signUp(
-      signUpDto.username,
-      signUpDto.password,
-      signUpDto.email,
-    );
+    return this.authService.signUp(signUpDto);
   }
 
   @Post('verify-otp')

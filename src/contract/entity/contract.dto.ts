@@ -50,7 +50,7 @@ export class Contract {
   })
   status!: ContractStatus;
 
-  @Column()
+  @Column({ default: '' })
   fileUrl!: string;
 
   @ManyToOne(() => User, (user) => user.id)

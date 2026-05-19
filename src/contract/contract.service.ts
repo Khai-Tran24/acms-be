@@ -168,16 +168,17 @@ export class ContractService {
 
         'secretary.id',
         'secretary.username',
-
+        'secretary.email',
         'createdBy.id',
         'createdBy.username',
+        'createdBy.email',
       ])
       .where('contract.id = :id', {
         id,
       })
       .getOne();
     if (!contract) {
-      throw new Error('Contract not found');
+      throw new Error('Không tìm thấy hợp đồng');
     }
     return contract;
   }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { Role } from 'src/common/enum/role.enum';
 
 export class SignUpDto {
@@ -25,6 +25,12 @@ export class SignUpDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsEmail(
+    {},
+    {
+      message: 'Email không hợp lệ',
+    },
+  )
   email!: string;
 
   @ApiProperty({
