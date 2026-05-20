@@ -10,12 +10,17 @@ import { MailModule } from './mail/mail.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ContractModule } from './contract/contract.module';
+import { LoggerModule } from 'nestjs-pino';
+import { loggerOptions } from './config/logger.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: loggerOptions.pinoHttp,
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
