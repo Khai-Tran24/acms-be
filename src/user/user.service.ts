@@ -14,7 +14,10 @@ export class UserService {
 
   async create(createUserDto: CreateUserDto) {
     const user = this.userRepository.create(createUserDto);
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = savedUser;
+    return userWithoutPassword;
   }
 
   async findAll(query: GetUserQueryDto): Promise<User[]> {
@@ -35,6 +38,14 @@ export class UserService {
   async findOne(params: Partial<User>): Promise<User | null> {
     const user = await this.userRepository.findOneBy(params);
     return user;
+  }
+
+  async findOneWithPassword(params: Partial<User>): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where(params)
+      .getOne();
   }
 
   async activateUser(id: string) {

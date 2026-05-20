@@ -4,9 +4,9 @@ import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
-import { Role } from 'src/common/enum/role.enum';
 import { User } from 'src/user/entity/user.entity';
 import { JwtPayload } from './types/jwt-payload.type';
+import { SignUpDto } from './dto/sign-up.dto';
 
 @Injectable()
 export class AuthService {
@@ -20,9 +20,11 @@ export class AuthService {
     let user: User | null = null;
 
     if (username.includes('@')) {
-      user = await this.userService.findOne({ email: username });
+      user = await this.userService.findOneWithPassword({ email: username });
     } else {
-      user = await this.userService.findOne({ username: username });
+      user = await this.userService.findOneWithPassword({
+        username: username,
+      });
     }
 
     if (!user) {
@@ -46,6 +48,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         isActive: user.isActive,
+        role: user.role,
       },
       { expiresIn: '7d' },
     );
@@ -62,6 +65,7 @@ export class AuthService {
     const payload: JwtPayload = {
       username: user.username,
       email: user.email,
+      role: user.role,
       id: user.id,
       isActive: user.isActive,
     };
@@ -75,13 +79,9 @@ export class AuthService {
     };
   }
 
-  async signUp(
-    username: string,
-    password: string,
-    email: string,
-  ): Promise<any> {
+  async signUp(signUpDto: SignUpDto): Promise<any> {
     const existingUser = await this.userService.findOne({
-      username: username,
+      username: signUpDto.username,
       isActive: true,
     });
 
@@ -91,23 +91,27 @@ export class AuthService {
     // Đã check tài khoản có tồn tại và đang active hay chưa, nếu có tồn tại nhưng chưa active thì vẫn cho phép đăng ký và gửi lại email kích hoạt
 
     const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(signUpDto.password, salt);
 
     const otp = Math.floor(100000 + Math.random() * 900000);
     const otpExpireAt = new Date();
     otpExpireAt.setHours(otpExpireAt.getHours() + 24);
 
     const userAfterHashing = {
-      username,
+      username: signUpDto.username,
       password: hashedPassword,
-      email,
+      email: signUpDto.email,
       isActive: false,
-      role: Role.SECRETARY,
+      role: signUpDto.role,
       otp,
       otpExpireAt,
     };
 
-    await this.mailService.sendActivationEmail(email, otp, username);
+    await this.mailService.sendActivationEmail(
+      signUpDto.email,
+      otp,
+      signUpDto.username,
+    );
     const newUser = await this.userService.create(userAfterHashing);
 
     return {
