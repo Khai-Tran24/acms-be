@@ -185,9 +185,25 @@ export class ContractService {
 
   async updateContract(
     id: string,
-    updatedContract: UpdateContractDto,
+    updatedContract: Partial<UpdateContractDto>,
   ): Promise<Contract> {
-    await this.contractRepository.update(id, updatedContract);
+    const [auctioneer, secretary] = await Promise.all([
+      this.userService.findOne({ id: updatedContract.auctioneer }),
+      this.userService.findOne({ id: updatedContract.secretary }),
+    ]);
+
+    const updateData: Partial<UpdateContractDto> & {
+      auctioneer?: any;
+      secretary?: any;
+    } = {
+      ...updatedContract,
+    };
+
+    if (auctioneer) updateData.auctioneer = auctioneer;
+    if (secretary) updateData.secretary = secretary;
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    await this.contractRepository.update(id, updateData as any);
     return this.getContractById(id);
   }
 
