@@ -11,7 +11,13 @@ import {
 } from '@nestjs/common';
 import { ContractService } from './contract.service';
 import { CreateContractDto } from './dto/create-contract.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiTags,
+  ApiParam,
+} from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/role.decorator';
 import { Role } from 'src/common/enum/role.enum';
 import { UpdateContractDto } from './dto/update-contract.dto';
@@ -19,6 +25,7 @@ import { GetContractDto } from './dto/get-contract.dto';
 import { User } from 'src/user/entity/user.entity';
 
 @ApiBearerAuth()
+@ApiTags('Contracts')
 @Controller('contracts')
 export class ContractController {
   constructor(private readonly contractService: ContractService) {}
@@ -35,6 +42,8 @@ export class ContractController {
 
   @Post()
   @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Create a new contract' })
+  @ApiBody({ type: CreateContractDto })
   createContract(
     @Body() contractData: CreateContractDto,
     @Req() req: { user: Partial<User> },
@@ -45,21 +54,28 @@ export class ContractController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Get contract by ID' })
+  @ApiParam({ name: 'id', description: 'Contract ID' })
   getContractById(@Param('id') id: string) {
     return this.contractService.getContractById(id);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Delete a contract' })
+  @ApiParam({ name: 'id', description: 'Contract ID' })
   deleteContract(@Param('id') id: string) {
     return this.contractService.deleteContract(id);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Update a contract' })
+  @ApiParam({ name: 'id', description: 'Contract ID' })
+  @ApiBody({ type: UpdateContractDto })
   updateContract(
+    @Body() contractData: Partial<UpdateContractDto>,
     @Param('id') id: string,
-    @Body() contractData: UpdateContractDto,
   ) {
     return this.contractService.updateContract(id, contractData);
   }
