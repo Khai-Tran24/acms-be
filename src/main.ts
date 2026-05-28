@@ -12,6 +12,7 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
+  app.enableCors();
   app.useLogger(app.get(Logger));
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());

@@ -7,6 +7,7 @@ import {
   ExceptionFilter,
   HttpException,
 } from '@nestjs/common';
+import { HttpStatus } from '../enum/http-status.enum';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -18,6 +19,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorResponse = exception.getResponse();
 
     response.status(status).json({
+      status: HttpStatus.ERROR,
       statusCode: status,
       message: errorResponse['message'] || errorResponse,
       timestamp: new Date().toISOString(),
