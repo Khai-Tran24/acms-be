@@ -9,6 +9,7 @@ import {
   HttpStatus as NestHttpStatus,
   Logger,
 } from '@nestjs/common';
+import { HttpStatus } from '../enum/http-status.enum';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -38,6 +39,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     response.status(status).json({
+      status: HttpStatus.ERROR,
       statusCode: status,
       message,
       timestamp: new Date().toISOString(),
