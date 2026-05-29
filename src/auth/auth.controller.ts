@@ -27,7 +27,6 @@ export class AuthController {
   @Post('verify-otp')
   @Public()
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto): Promise<any> {
-    console.log(verifyOtpDto);
     return this.authService.verifyOtp(verifyOtpDto.email, verifyOtpDto.otp);
   }
 
