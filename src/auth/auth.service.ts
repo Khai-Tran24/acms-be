@@ -107,12 +107,13 @@ export class AuthService {
       otpExpireAt,
     };
 
+    const newUser = await this.userService.create(userAfterHashing);
+
     await this.mailService.sendActivationEmail(
       signUpDto.email,
       otp,
       signUpDto.username,
     );
-    const newUser = await this.userService.create(userAfterHashing);
 
     return {
       message:

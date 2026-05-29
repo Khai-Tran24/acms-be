@@ -6,20 +6,40 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
+  HttpStatus as NestHttpStatus,
+  Logger,
 } from '@nestjs/common';
 
-@Catch(HttpException)
+@Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: HttpException, host: ArgumentsHost) {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
+  catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
     const request = ctx.getRequest();
-    const status = exception.getStatus();
-    const errorResponse = exception.getResponse();
+
+    let status = NestHttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Internal server error';
+    let errorResponse = exception;
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      errorResponse = exception.getResponse();
+      message = errorResponse?.['message'] || errorResponse;
+    } else if (exception instanceof Error) {
+      message = exception.message;
+      this.logger.error(
+        `Unhandled exception: ${exception.message}`,
+        exception.stack,
+      );
+    } else {
+      this.logger.error('Unknown exception caught', exception);
+    }
 
     response.status(status).json({
       statusCode: status,
-      message: errorResponse['message'] || errorResponse,
+      message,
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
