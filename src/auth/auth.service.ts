@@ -16,14 +16,16 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async signIn(username: string, password: string): Promise<any> {
+  async signIn(loginIdentify: string, password: string): Promise<any> {
     let user: User | null = null;
 
-    if (username.includes('@')) {
-      user = await this.userService.findOneWithPassword({ email: username });
+    if (loginIdentify.includes('@')) {
+      user = await this.userService.findOneWithPassword({
+        email: loginIdentify,
+      });
     } else {
       user = await this.userService.findOneWithPassword({
-        username: username,
+        username: loginIdentify,
       });
     }
 
@@ -82,16 +84,14 @@ export class AuthService {
   async signUp(signUpDto: SignUpDto): Promise<any> {
     const existingUser = await this.userService.findOne({
       username: signUpDto.username,
-      isActive: true,
+      email: signUpDto.email,
     });
 
-    if (existingUser) {
+    if (existingUser && existingUser.isActive) {
       throw new UnauthorizedException('Người dùng đã tồn tại');
     }
-    // Đã check tài khoản có tồn tại và đang active hay chưa, nếu có tồn tại nhưng chưa active thì vẫn cho phép đăng ký và gửi lại email kích hoạt
 
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(signUpDto.password, salt);
+    const hashedPassword = await bcrypt.hash(signUpDto.password, 10);
 
     const otp = Math.floor(100000 + Math.random() * 900000);
     const otpExpireAt = new Date();
@@ -106,6 +106,17 @@ export class AuthService {
       otp,
       otpExpireAt,
     };
+
+    if (existingUser && !existingUser.isActive) {
+      await this.userService.update(existingUser.id, {
+        ...userAfterHashing,
+      } as unknown as UpdateUserDto);
+
+      return {
+        message:
+          'Tài khoản đã tồn tại nhưng chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt tài khoản của bạn.',
+      };
+    }
 
     const newUser = await this.userService.create(userAfterHashing);
 
@@ -188,5 +199,65 @@ export class AuthService {
     };
 
     return formatUser;
+  }
+
+  async forgotPassword(email: string): Promise<any> {
+    const user = await this.userService.findOne({ email });
+    if (!user) {
+      throw new UnauthorizedException('Email không tồn tại');
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const otpExpireAt = new Date();
+    otpExpireAt.setHours(otpExpireAt.getHours() + 1);
+
+    await this.userService.update(user.id, {
+      otp,
+      otpExpireAt,
+    } as unknown as UpdateUserDto);
+
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?email=${email}&token=${otp}`;
+    await this.mailService.sendPasswordResetEmail(
+      email,
+      resetLink,
+      user.username,
+    );
+
+    return {
+      message: 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn',
+      data: {},
+    };
+  }
+
+  async resetPassword(
+    email: string,
+    token: number,
+    newPassword: string,
+  ): Promise<any> {
+    const user = await this.userService.findOne({ email });
+    if (!user) {
+      throw new UnauthorizedException('Email không tồn tại');
+    }
+
+    if (user.otp !== token) {
+      throw new UnauthorizedException('Token không hợp lệ');
+    }
+
+    if (!user.otpExpireAt || user.otpExpireAt < new Date()) {
+      throw new UnauthorizedException('Token đã hết hạn');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.userService.update(user.id, {
+      password: hashedPassword,
+      otp: null,
+      otpExpireAt: null,
+    } as unknown as UpdateUserDto);
+
+    return {
+      message: 'Đặt lại mật khẩu thành công',
+      data: {},
+    };
   }
 }
