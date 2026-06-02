@@ -15,7 +15,7 @@ export class AuthController {
   @Post('signin')
   @Public()
   async signIn(@Body() signInDto: SignInDto): Promise<any> {
-    return this.authService.signIn(signInDto.username, signInDto.password);
+    return this.authService.signIn(signInDto.loginIdentify, signInDto.password);
   }
 
   @Post('signup')
@@ -43,5 +43,21 @@ export class AuthController {
   async getProfile(@Req() req: { user: Partial<User> }): Promise<any> {
     const id = req.user.id as string;
     return this.authService.getProfile(id);
+  }
+
+  @Post('forgot-password')
+  @Public()
+  async forgotPassword(@Body('email') email: string): Promise<any> {
+    return this.authService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  @Public()
+  async resetPassword(
+    @Body('email') email: string,
+    @Body('token') token: number,
+    @Body('newPassword') newPassword: string,
+  ): Promise<any> {
+    return this.authService.resetPassword(email, token, newPassword);
   }
 }
