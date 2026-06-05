@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { User } from './entity/user.entity';
 import { GetUserQueryDto } from './dto/get-user-query.dto';
 
@@ -21,17 +21,42 @@ export class UserService {
   }
 
   async findAll(query: GetUserQueryDto): Promise<User[]> {
+    const where: Record<string, any> = {};
+
+    // Apply role filter
+    if (query.filterByRole !== undefined) {
+      where['role'] = query.filterByRole;
+    }
+
+    // Apply status filter
+    if (query.filterByStatus !== undefined) {
+      where['isActive'] = query.filterByStatus;
+    }
+
+    // Build the query conditions
+    let queryConditions: Record<string, any> | Record<string, any>[];
+
+    if (query.search) {
+      // If search is present, create OR conditions for username/email with AND conditions for role/status
+      queryConditions = [
+        { username: Like(`%${query.search}%`), ...where },
+        { email: Like(`%${query.search}%`), ...where },
+      ];
+    } else if (Object.keys(where).length > 0) {
+      queryConditions = where;
+    } else {
+      queryConditions = {};
+    }
+
     return this.userRepository.find({
-      where: query.search
-        ? [{ username: query.search }, { email: query.search }]
-        : {},
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      where: queryConditions as any,
       order: query.sortBy
         ? { [query.sortBy]: query.sortOrder === 'desc' ? 'DESC' : 'ASC' }
         : {},
-      skip: query.pagination
-        ? (query.pagination.page - 1) * query.pagination.limit
-        : undefined,
-      take: query.pagination ? query.pagination.limit : undefined,
+      skip:
+        query.page && query.limit ? (query.page - 1) * query.limit : undefined,
+      take: query.limit ? query.limit : undefined,
     });
   }
 
@@ -59,9 +84,14 @@ export class UserService {
 
   async remove(id: string) {
     const user = await this.findOne({ id: id });
+    if (user?.isActive === true) {
+      return { message: 'Không thể xóa tài khoản đang hoạt động' };
+    }
+
     if (user) {
       await this.userRepository.remove(user);
     }
-    return user;
+
+    return { message: 'Xóa tài khoản thành công' };
   }
 }
