@@ -17,7 +17,7 @@ import { Role } from 'src/common/enum/role.enum';
 import { Roles } from 'src/common/decorators/role.decorator';
 
 @ApiBearerAuth()
-@Controller('user')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -49,4 +49,10 @@ export class UserController {
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
+
+  // @Post('refresh')
+  // @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  // refreshToken(@Query('id') id: string) {
+  //   return this.userService.refreshToken(id);
+  // }
 }
