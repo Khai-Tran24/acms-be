@@ -44,26 +44,6 @@ export class AuthService {
       );
     }
 
-    const refreshToken = this.jwtService.sign(
-      {
-        username: user.username,
-        id: user.id,
-        email: user.email,
-        isActive: user.isActive,
-        role: user.role,
-      },
-      { expiresIn: '7d' },
-    );
-
-    const hashedRefreshToken = await bcrypt.hash(
-      refreshToken,
-      await bcrypt.genSalt(),
-    );
-
-    await this.userService.update(user.id, {
-      refreshToken: hashedRefreshToken,
-    } as UpdateUserDto);
-
     const payload: JwtPayload = {
       username: user.username,
       email: user.email,
@@ -72,10 +52,18 @@ export class AuthService {
       isActive: user.isActive,
     };
 
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+
+    await this.userService.update(user.id, {
+      refreshToken: hashedRefreshToken,
+    } as UpdateUserDto);
+
     return {
       message: 'Đăng nhập thành công',
       data: {
-        accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
+        accessToken: this.jwtService.sign(payload, { expiresIn: '1h' }),
         refreshToken,
       },
     };
@@ -170,7 +158,10 @@ export class AuthService {
 
   async signOut(id: string): Promise<any> {
     try {
-      await this.userService.update(id, { refreshToken: '' } as UpdateUserDto);
+      await this.userService.update(id, {
+        refreshToken: '',
+        accessToken: '',
+      } as UpdateUserDto);
     } catch (error) {
       console.error('Error signing out:', error);
       throw new UnauthorizedException('Đăng xuất thất bại');
@@ -260,4 +251,57 @@ export class AuthService {
       data: {},
     };
   }
+
+  // async refreshToken(oldRefreshToken: string): Promise<any> {
+  //   try {
+  //     const decoded = this.jwtService.verify(oldRefreshToken);
+  //     const user = await this.userService.findOne({ id: decoded.id });
+
+  //     if (!user || !user.refreshToken) {
+  //       throw new UnauthorizedException(
+  //         'Người dùng không tồn tại hoặc chưa đăng nhập',
+  //       );
+  //     }
+
+  //     const isMatch = await bcrypt.compare(oldRefreshToken, user.refreshToken);
+  //     if (!isMatch) {
+  //       throw new UnauthorizedException('Refresh token không hợp lệ');
+  //     }
+
+  //     const payload: JwtPayload = {
+  //       username: user.username,
+  //       email: user.email,
+  //       role: user.role,
+  //       id: user.id,
+  //       isActive: user.isActive,
+  //     };
+
+  //     const newAccessToken = this.jwtService.sign(payload, {
+  //       expiresIn: '15m',
+  //     });
+  //     const newRefreshToken = this.jwtService.sign(payload, {
+  //       expiresIn: '7d',
+  //     });
+
+  //     const hashedNewRefreshToken = await bcrypt.hash(
+  //       newRefreshToken,
+  //       await bcrypt.genSalt(),
+  //     );
+
+  //     await this.userService.update(user.id, {
+  //       refreshToken: hashedNewRefreshToken,
+  //     } as UpdateUserDto);
+
+  //     return {
+  //       message: 'Làm mới token thành công',
+  //       data: {
+  //         accessToken: newAccessToken,
+  //         refreshToken: newRefreshToken,
+  //       },
+  //     };
+  //   } catch (error) {
+  //     console.error('Error refreshing token:', error);
+  //     throw new UnauthorizedException('Làm mới token thất bại');
+  //   }
+  // }
 }
