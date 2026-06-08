@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -20,7 +21,15 @@ export class UserService {
     return userWithoutPassword;
   }
 
-  async findAll(query: GetUserQueryDto): Promise<User[]> {
+  async findAll(query: GetUserQueryDto): Promise<{
+    data: User[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  }> {
     const where: Record<string, any> = {};
 
     // Apply role filter
@@ -48,8 +57,7 @@ export class UserService {
       queryConditions = {};
     }
 
-    return this.userRepository.find({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const users = await this.userRepository.find({
       where: queryConditions as any,
       order: query.sortBy
         ? { [query.sortBy]: query.sortOrder === 'desc' ? 'DESC' : 'ASC' }
@@ -58,6 +66,24 @@ export class UserService {
         query.page && query.limit ? (query.page - 1) * query.limit : undefined,
       take: query.limit ? query.limit : undefined,
     });
+
+    return {
+      data: users,
+      pagination: {
+        page: query.page || 1,
+        limit: query.limit || 10,
+        totalItems: await this.userRepository.count({
+          where: queryConditions as any,
+        }),
+        totalPages: query.limit
+          ? Math.ceil(
+              (await this.userRepository.count({
+                where: queryConditions as any,
+              })) / query.limit,
+            )
+          : 1,
+      },
+    };
   }
 
   async findOne(params: Partial<User>): Promise<User | null> {
