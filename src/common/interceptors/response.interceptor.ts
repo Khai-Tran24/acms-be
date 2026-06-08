@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
@@ -18,6 +19,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
         statusCode: context.switchToHttp().getResponse().statusCode,
         message: data.message || 'Success',
         data: data.data || data,
+        ...(data.pagination && { pagination: data.pagination }),
       })),
     );
   }
