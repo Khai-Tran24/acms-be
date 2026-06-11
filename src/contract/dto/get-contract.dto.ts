@@ -35,8 +35,8 @@ export class GetContractDto {
     description: 'Bộ lọc (auctioneer, secretary, createdBy)',
   })
   @IsOptional()
-  @IsEnum(['auctioneer', 'secretary', 'createdBy'])
-  filterBy?: 'auctioneer' | 'secretary' | 'createdBy';
+  @IsString()
+  filterByUserId?: string;
 
   @ApiPropertyOptional({
     description: 'Ngày bắt đầu đăng ký (định dạng ISO 8601)',
@@ -79,13 +79,4 @@ export class GetContractDto {
   @IsNumber()
   @Min(1)
   limit?: number = 10;
-
-  // Computed property for pagination object (for internal use)
-  get pagination() {
-    return {
-      page: this.page || 1,
-      limit: this.limit || 10,
-      total: 0,
-    };
-  }
 }

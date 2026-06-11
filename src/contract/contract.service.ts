@@ -56,7 +56,15 @@ export class ContractService {
   async getAllContracts(
     query: GetContractDto,
     user: Partial<User>,
-  ): Promise<{ data: Contract[]; pagination: any }> {
+  ): Promise<{
+    data: Contract[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  }> {
     const queryBuilder = this.contractRepository.createQueryBuilder('contract');
 
     queryBuilder
@@ -78,20 +86,11 @@ export class ContractService {
       );
     }
 
-    if (query.filterBy) {
-      if (query.filterBy === 'auctioneer') {
-        queryBuilder.andWhere('contract.auctioneer = :filteredUserId', {
-          filteredUserId: user.id,
-        });
-      } else if (query.filterBy === 'secretary') {
-        queryBuilder.andWhere('contract.secretary = :filteredUserId', {
-          filteredUserId: user.id,
-        });
-      } else if (query.filterBy === 'createdBy') {
-        queryBuilder.andWhere('contract.createdBy = :filteredUserId', {
-          filteredUserId: user.id,
-        });
-      }
+    if (query.filterByUserId) {
+      queryBuilder.andWhere(
+        '(auctioneer.id = :filterByUserId OR secretary.id = :filterByUserId OR createdBy.id = :filterByUserId)',
+        { filterByUserId: query.filterByUserId },
+      );
     }
 
     if (query.startRegisterDate) {
@@ -132,8 +131,8 @@ export class ContractService {
       queryBuilder.orderBy('contract.createdAt', 'DESC');
     }
 
-    const page = query.pagination?.page || 1;
-    const limit = query.pagination?.limit || 10;
+    const page = query.page || 1;
+    const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
     const [data, total] = await queryBuilder
@@ -146,7 +145,8 @@ export class ContractService {
       pagination: {
         page,
         limit,
-        total,
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
@@ -202,8 +202,7 @@ export class ContractService {
     if (auctioneer) updateData.auctioneer = auctioneer;
     if (secretary) updateData.secretary = secretary;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    await this.contractRepository.update(id, updateData as any);
+    await this.contractRepository.update(id, updateData);
     return this.getContractById(id);
   }
 
