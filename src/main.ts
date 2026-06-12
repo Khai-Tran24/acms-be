@@ -12,7 +12,15 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  app.enableCors();
+  app.enableCors(
+    process.env.NODE_ENV === 'production'
+      ? {
+          origin: [process.env.CLIENT_URL],
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+          allowedHeaders: ['Content-Type', 'Authorization'],
+        }
+      : true,
+  );
   app.useLogger(app.get(Logger));
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
