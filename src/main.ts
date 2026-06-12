@@ -16,7 +16,7 @@ async function bootstrap() {
     process.env.NODE_ENV === 'production'
       ? {
           origin: [process.env.CLIENT_URL],
-          methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
           allowedHeaders: ['Content-Type', 'Authorization'],
         }
       : true,
