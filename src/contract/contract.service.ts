@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Contract } from './entity/contract.dto';
+import { Contract } from './entity/contract.entity';
 import { Repository } from 'typeorm';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -48,6 +48,9 @@ export class ContractService {
       createdBy: user,
       auctioneer,
       secretary,
+      startingPrice: contract.startingPrice.toString(),
+      applicationFee: contract.applicationFee.toString(),
+      deposit: contract.deposit.toString(),
     } as unknown as Contract;
 
     return this.contractRepository.save(contractData);
@@ -202,7 +205,12 @@ export class ContractService {
     if (auctioneer) updateData.auctioneer = auctioneer;
     if (secretary) updateData.secretary = secretary;
 
-    await this.contractRepository.update(id, updateData);
+    await this.contractRepository.update(id, {
+      ...updateData,
+      startingPrice: updateData.startingPrice?.toString(),
+      applicationFee: updateData.applicationFee?.toString(),
+      deposit: updateData.deposit?.toString(),
+    });
     return this.getContractById(id);
   }
 

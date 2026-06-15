@@ -11,7 +11,7 @@ import {
 
 @Entity()
 export class Contract {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn()
   id!: string;
 
   @Column({ unique: true })
@@ -23,14 +23,26 @@ export class Contract {
   @Column()
   description!: string;
 
-  @Column()
-  startingPrice!: number;
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+  })
+  startingPrice!: string;
 
-  @Column()
-  applicationFee!: number;
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+  })
+  applicationFee!: string;
 
-  @Column()
-  deposit!: number;
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+  })
+  deposit!: string;
 
   @Column()
   registerStartDate!: Date;
