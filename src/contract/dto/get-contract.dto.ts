@@ -43,7 +43,6 @@ export class GetContractDto {
   })
   @IsOptional()
   @IsDateString()
-  @Type(() => Date)
   startRegisterDate?: string;
 
   @ApiPropertyOptional({
@@ -51,7 +50,6 @@ export class GetContractDto {
   })
   @IsOptional()
   @IsDateString()
-  @Type(() => Date)
   endRegisterDate?: string;
 
   @ApiPropertyOptional({
@@ -59,7 +57,6 @@ export class GetContractDto {
   })
   @IsOptional()
   @IsDateString()
-  @Type(() => Date)
   auctionDate?: string;
 
   @ApiPropertyOptional({
