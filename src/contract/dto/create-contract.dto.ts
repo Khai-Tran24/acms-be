@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsNotEmpty,
@@ -31,16 +32,19 @@ export class CreateContractDto {
   @IsGreaterThan('deposit', {
     message: 'Giá khởi điểm phải lớn hơn tiền đặt cọc',
   })
+  @Type(() => Number)
   startingPrice!: number;
 
   @ApiProperty()
   @IsNumber()
   @IsNotEmpty()
+  @Type(() => Number)
   applicationFee!: number;
 
   @ApiProperty()
   @IsNumber()
   @IsNotEmpty()
+  @Type(() => Number)
   deposit!: number;
 
   @ApiProperty()

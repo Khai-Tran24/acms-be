@@ -12,6 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ContractModule } from './contract/contract.module';
 import { LoggerModule } from 'nestjs-pino';
 import { loggerOptions } from './config/logger.config';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { loggerOptions } from './config/logger.config';
     UserModule,
     MailModule,
     ContractModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
