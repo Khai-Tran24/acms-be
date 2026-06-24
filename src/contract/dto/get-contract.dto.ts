@@ -11,18 +11,19 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GetContractDto {
   @ApiPropertyOptional({
-    description: 'Từ khóa tìm kiếm (theo số quy chế, tiêu đề, mô tả)',
+    description: 'Từ khóa tìm kiếm (theo tên tài sản hoặc số hợp đồng)',
   })
   @IsOptional()
   @IsString()
   search?: string;
 
   @ApiPropertyOptional({
-    description: 'Trường để sắp xếp kết quả (username, email, createdAt)',
+    description:
+      'Trường để sắp xếp kết quả (createdAt, year, contractNumber, propertyName)',
   })
   @IsOptional()
-  @IsEnum(['username', 'email', 'createdAt'])
-  sortBy?: 'username' | 'email' | 'createdAt';
+  @IsEnum(['createdAt', 'year', 'contractNumber', 'propertyName'])
+  sortBy?: 'createdAt' | 'year' | 'contractNumber' | 'propertyName';
 
   @ApiPropertyOptional({
     description: 'Thứ tự sắp xếp (asc - tăng dần, desc - giảm dần)',
@@ -32,18 +33,18 @@ export class GetContractDto {
   sortOrder?: 'asc' | 'desc';
 
   @ApiPropertyOptional({
-    description: 'Bộ lọc (auctioneer, secretary, createdBy)',
+    description: 'Bộ lọc theo người dùng (theo ID người dùng)',
   })
   @IsOptional()
   @IsString()
   filterByUserId?: string;
 
   @ApiPropertyOptional({
-    description: 'Ngày bắt đầu đăng ký (định dạng ISO 8601)',
+    description: 'Bộ lọc theo năm hợp đồng (theo năm)',
   })
   @IsOptional()
   @IsDateString()
-  startRegisterDate?: string;
+  filterByYear?: number;
 
   @ApiPropertyOptional({
     description: 'Ngày kết thúc đăng ký (định dạng ISO 8601)',
@@ -60,7 +61,7 @@ export class GetContractDto {
   auctionDate?: string;
 
   @ApiPropertyOptional({
-    description: 'Trạng thái hợp đồng (DRAFT, PUBLISHED, CLOSED)',
+    description: 'Số trang (mặc định là 1)',
   })
   @IsOptional()
   @Type(() => Number)
