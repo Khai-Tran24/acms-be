@@ -22,7 +22,7 @@ export class ContractService {
     userId: string | undefined,
   ): Promise<Contract> {
     const existingContract = await this.contractRepository.findOne({
-      where: { regulationNumber: contract.regulationNumber },
+      where: { contractNumber: contract.contractNumber },
     });
 
     if (existingContract) {
@@ -37,20 +37,15 @@ export class ContractService {
       );
     }
 
-    const [user, auctioneer, secretary] = await Promise.all([
+    const [user] = await Promise.all([
       this.userService.findOne({ id: userId }),
-      this.userService.findOne({ id: contract.auctioneer }),
-      this.userService.findOne({ id: contract.secretary }),
     ]);
 
     const contractData = {
       ...contract,
       createdBy: user,
-      auctioneer,
-      secretary,
       startingPrice: contract.startingPrice.toString(),
-      applicationFee: contract.applicationFee.toString(),
-      deposit: contract.deposit.toString(),
+      winningPrice: contract.winningPrice.toString() || null,
     } as unknown as Contract;
 
     return this.contractRepository.save(contractData);
@@ -60,7 +55,8 @@ export class ContractService {
     query: GetContractDto,
     user: Partial<User>,
   ): Promise<{
-    data: Contract[];
+    items: Contract[];
+    message: string;
     pagination: {
       page: number;
       limit: number;
@@ -68,50 +64,53 @@ export class ContractService {
       totalPages: number;
     };
   }> {
-    const queryBuilder = this.contractRepository.createQueryBuilder('contract');
+    const queryBuilder = this.contractRepository
+      .createQueryBuilder('contract')
+      .leftJoinAndSelect('contract.caseOfficer', 'caseOfficer')
+      .leftJoinAndSelect('contract.createdBy', 'createdBy')
+      .select([
+        'contract',
 
-    queryBuilder
-      .leftJoinAndSelect('contract.auctioneer', 'auctioneer')
-      .leftJoinAndSelect('contract.secretary', 'secretary')
-      .leftJoinAndSelect('contract.createdBy', 'createdBy');
+        'caseOfficer.id',
+        'caseOfficer.username',
+        'caseOfficer.email',
+
+        'createdBy.id',
+        'createdBy.username',
+        'createdBy.email',
+      ]);
 
     if (user.role !== Role.ADMIN) {
       queryBuilder.where(
-        '(contract.auctioneer = :userId OR contract.secretary = :userId OR contract.createdBy = :userId)',
+        '(contract.caseOfficer = :userId OR contract.createdBy = :userId)',
         { userId: user.id },
       );
     }
 
     if (query.search) {
       queryBuilder.andWhere(
-        '(contract.title ILIKE :search OR contract.description ILIKE :search OR contract.regulationNumber ILIKE :search)',
+        '(contract.propertyName ILIKE :search OR contract.contractNumber ILIKE :search)',
         { search: `%${query.search}%` },
       );
     }
 
+    if (query.filterByYear) {
+      queryBuilder.andWhere('contract.contractYear = :filterByYear', {
+        filterByYear: query.filterByYear,
+      });
+    }
+
     if (query.filterByUserId) {
       queryBuilder.andWhere(
-        '(auctioneer.id = :filterByUserId OR secretary.id = :filterByUserId OR createdBy.id = :filterByUserId)',
+        '(caseOfficer.id = :filterByUserId OR createdBy.id = :filterByUserId)',
         { filterByUserId: query.filterByUserId },
       );
     }
 
-    if (query.startRegisterDate) {
-      queryBuilder.andWhere(
-        'contract.registerStartDate >= :startRegisterDate',
-        {
-          startRegisterDate: query.startRegisterDate,
-        },
-      );
-    }
-
     if (query.endRegisterDate) {
-      queryBuilder.andWhere(
-        'contract.registerExpiredDate <= :endRegisterDate',
-        {
-          endRegisterDate: query.endRegisterDate,
-        },
-      );
+      queryBuilder.andWhere('contract.endRegisterDate <= :endRegisterDate', {
+        endRegisterDate: query.endRegisterDate,
+      });
     }
 
     if (query.auctionDate) {
@@ -125,10 +124,12 @@ export class ContractService {
         query.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
       if (query.sortBy === 'createdAt') {
         queryBuilder.orderBy('contract.createdAt', order);
-      } else if (query.sortBy === 'username') {
-        queryBuilder.orderBy('createdBy.username', order);
-      } else if (query.sortBy === 'email') {
-        queryBuilder.orderBy('createdBy.email', order);
+      } else if (query.sortBy === 'year') {
+        queryBuilder.orderBy('contract.contractYear', order);
+      } else if (query.sortBy === 'contractNumber') {
+        queryBuilder.orderBy('contract.contractNumber', order);
+      } else if (query.sortBy === 'propertyName') {
+        queryBuilder.orderBy('contract.propertyName', order);
       }
     } else {
       queryBuilder.orderBy('contract.createdAt', 'DESC');
@@ -144,7 +145,8 @@ export class ContractService {
       .getManyAndCount();
 
     return {
-      data,
+      items: data,
+      message: 'Lấy danh sách hợp đồng thành công',
       pagination: {
         page,
         limit,
@@ -157,21 +159,17 @@ export class ContractService {
   async getContractById(id: string): Promise<Contract> {
     const QueryBuilder = this.contractRepository.createQueryBuilder('contract');
     const contract = await QueryBuilder.leftJoinAndSelect(
-      'contract.auctioneer',
-      'auctioneer',
+      'contract.caseOfficer',
+      'caseOfficer',
     )
-      .leftJoinAndSelect('contract.secretary', 'secretary')
       .leftJoinAndSelect('contract.createdBy', 'createdBy')
       .select([
         'contract',
 
-        'auctioneer.id',
-        'auctioneer.username',
-        'auctioneer.email',
+        'caseOfficer.id',
+        'caseOfficer.username',
+        'caseOfficer.email',
 
-        'secretary.id',
-        'secretary.username',
-        'secretary.email',
         'createdBy.id',
         'createdBy.username',
         'createdBy.email',
@@ -190,27 +188,21 @@ export class ContractService {
     id: string,
     updatedContract: Partial<UpdateContractDto>,
   ): Promise<Contract> {
-    const [auctioneer, secretary] = await Promise.all([
-      this.userService.findOne({ id: updatedContract.auctioneer }),
-      this.userService.findOne({ id: updatedContract.secretary }),
-    ]);
+    const caseOfficer = await this.userService.findOne({
+      id: updatedContract.caseOfficer,
+    });
 
-    const updateData: Partial<UpdateContractDto> & {
-      auctioneer?: any;
-      secretary?: any;
-    } = {
+    const updateData: Partial<UpdateContractDto> = {
       ...updatedContract,
     };
 
-    if (auctioneer) updateData.auctioneer = auctioneer;
-    if (secretary) updateData.secretary = secretary;
+    if (caseOfficer) {
+      updateData.caseOfficer = caseOfficer.id;
+    }
 
     await this.contractRepository.update(id, {
       ...updateData,
-      startingPrice: updateData.startingPrice?.toString(),
-      applicationFee: updateData.applicationFee?.toString(),
-      deposit: updateData.deposit?.toString(),
-    });
+    } as unknown as Contract);
     return this.getContractById(id);
   }
 

@@ -15,13 +15,13 @@ export class NumberIsGreaterThan implements ValidatorConstraintInterface {
     return (
       typeof value === 'number' &&
       typeof relatedValue === 'number' &&
-      value > relatedValue
+      value >= relatedValue
     );
   }
 
   defaultMessage(args: ValidationArguments) {
     const [relatedPropertyName] = args.constraints as string[];
 
-    return `${args.property} must be greater than ${relatedPropertyName}`;
+    return `${args.property} must be greater than or equal to ${relatedPropertyName}`;
   }
 }

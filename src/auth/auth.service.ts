@@ -61,11 +61,8 @@ export class AuthService {
     } as UpdateUserDto);
 
     return {
-      message: 'Đăng nhập thành công',
-      data: {
-        accessToken: this.jwtService.sign(payload, { expiresIn: '1h' }),
-        refreshToken,
-      },
+      accessToken: this.jwtService.sign(payload, { expiresIn: '1h' }),
+      refreshToken,
     };
   }
 
@@ -114,11 +111,7 @@ export class AuthService {
       signUpDto.username,
     );
 
-    return {
-      message:
-        'Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản của bạn.',
-      data: newUser,
-    };
+    return newUser;
   }
 
   async verifyOtp(email: string, otp: number): Promise<any> {
@@ -150,10 +143,7 @@ export class AuthService {
       otpExpireAt: null,
     } as unknown as UpdateUserDto);
 
-    return {
-      message: 'Kích hoạt tài khoản thành công',
-      data: {},
-    };
+    return null;
   }
 
   async signOut(id: string): Promise<any> {
@@ -167,10 +157,7 @@ export class AuthService {
       throw new UnauthorizedException('Đăng xuất thất bại');
     }
 
-    return {
-      message: 'Đăng xuất thành công',
-      data: {},
-    };
+    return null;
   }
 
   async getProfile(id: string): Promise<any> {
@@ -178,8 +165,6 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Người dùng không tồn tại');
     }
-
-    console.log('User profile:', user);
 
     const formatUser = {
       id: user.id,
@@ -204,7 +189,7 @@ export class AuthService {
 
     await this.userService.update(user.id, {
       otp,
-      otpExpireAt,
+      otpExpireAt: otpExpireAt,
     } as unknown as UpdateUserDto);
 
     const resetLink = `${process.env.CLIENT_URL}/reset-password?email=${email}&token=${otp}`;
@@ -214,10 +199,7 @@ export class AuthService {
       user.username,
     );
 
-    return {
-      message: 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn',
-      data: {},
-    };
+    return null;
   }
 
   async resetPassword(
@@ -246,10 +228,7 @@ export class AuthService {
       otpExpireAt: null,
     } as unknown as UpdateUserDto);
 
-    return {
-      message: 'Đặt lại mật khẩu thành công',
-      data: {},
-    };
+    return null;
   }
 
   // async refreshToken(oldRefreshToken: string): Promise<any> {
