@@ -22,7 +22,8 @@ export class UserService {
   }
 
   async findAll(query: GetUserQueryDto): Promise<{
-    data: User[];
+    items: User[];
+    message: string;
     pagination: {
       page: number;
       limit: number;
@@ -68,7 +69,8 @@ export class UserService {
     });
 
     return {
-      data: users,
+      items: users,
+      message: 'Lấy danh sách người dùng thành công',
       pagination: {
         page: query.page || 1,
         limit: query.limit || 10,
@@ -88,6 +90,7 @@ export class UserService {
 
   async findOne(params: Partial<User>): Promise<User | null> {
     const user = await this.userRepository.findOneBy(params);
+
     return user;
   }
 

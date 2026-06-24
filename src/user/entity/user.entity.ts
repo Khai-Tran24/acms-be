@@ -12,33 +12,33 @@ export class User {
   @PrimaryGeneratedColumn()
   id!: string;
 
-  @Column({ unique: true })
+  @Column({ name: 'username', unique: true })
   username!: string;
 
-  @Column({ unique: true })
+  @Column({ name: 'email', unique: true })
   email!: string;
 
-  @Column({ select: false })
+  @Column({ name: 'password', select: false })
   password!: string;
 
-  @Column({ nullable: true })
-  refreshToken!: string;
-
-  @Column({ default: true })
+  @Column({ name: 'is_active', default: false })
   isActive!: boolean;
 
-  @Column({ type: 'enum', enum: Role })
+  @Column({ name: 'role', type: 'enum', enum: Role })
   role!: Role;
 
-  @Column({ nullable: true })
+  @Column({ name: 'refresh_token', nullable: true })
+  refreshToken!: string;
+
+  @Column({ name: 'otp_expire_at', nullable: true })
   otpExpireAt?: Date;
 
-  @Column({ nullable: true })
+  @Column({ name: 'otp', nullable: true })
   otp?: number;
 
-  @CreateDateColumn()
-  createdAt!: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  created_at!: Date;
 
-  @UpdateDateColumn()
-  updatedAt!: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at!: Date;
 }
