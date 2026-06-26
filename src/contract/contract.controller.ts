@@ -52,6 +52,14 @@ export class ContractController {
     return this.contractService.createContract(contractData, user.id);
   }
 
+  @Get('filter-options')
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Get filter values for contracts' })
+  getContractFilterValue(@Req() req: { user: Partial<User> }) {
+    console.log('User in getContractFilterValue:', req.user);
+    return this.contractService.getContractFilterValue(req.user);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
   @ApiOperation({ summary: 'Get contract by ID' })

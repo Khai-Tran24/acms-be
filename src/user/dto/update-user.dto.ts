@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
+import { Role } from 'src/common/enum/role.enum';
 
 export class UpdateUserDto {
   @ApiProperty({
@@ -18,14 +19,23 @@ export class UpdateUserDto {
   @IsNotEmpty()
   email!: string;
 
-  refreshToken!: string;
-  accessToken!: string;
-  otp!: number;
-  otpExpireAt!: Date;
-
   @ApiProperty({
     description: 'The active status of the user',
     example: true,
   })
+  @IsBoolean()
   isActive!: boolean;
+
+  @ApiProperty({
+    description: 'The role of the user',
+    example: 'ADMIN',
+  })
+  @IsNotEmpty()
+  @IsString()
+  role!: Role;
+
+  refreshToken!: string;
+  accessToken!: string;
+  otp!: number;
+  otpExpireAt!: Date;
 }
