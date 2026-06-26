@@ -25,6 +25,8 @@ export class ContractService {
       where: { contractNumber: contract.contractNumber },
     });
 
+    console.log('Existing contract:', contract);
+
     if (existingContract) {
       throw new Error(
         'Đã tồn tại hợp đồng với số quy chế này. Vui lòng chọn số quy chế khác.',
@@ -43,8 +45,8 @@ export class ContractService {
 
     const contractData = {
       ...contract,
-      createdBy: user,
-      startingPrice: contract.startingPrice.toString(),
+      createdBy: user?.id,
+      startingPrice: contract.startingPrice.toString() || null,
       winningPrice: contract.winningPrice.toString() || null,
     } as unknown as Contract;
 
@@ -188,6 +190,8 @@ export class ContractService {
     id: string,
     updatedContract: Partial<UpdateContractDto>,
   ): Promise<Contract> {
+    console.log('Updated contract data:', updatedContract);
+
     const caseOfficer = await this.userService.findOne({
       id: updatedContract.caseOfficer,
     });
@@ -208,5 +212,29 @@ export class ContractService {
 
   async deleteContract(id: string): Promise<void> {
     await this.contractRepository.delete(id);
+  }
+
+  async getContractFilterValue(user: Partial<User>): Promise<{
+    years: number[];
+    caseOfficers: { id: string; username: string; role: string }[];
+  }> {
+    console.log('User in getContractFilterValue:', user);
+
+    const years = await this.contractRepository
+      .createQueryBuilder('contract')
+      .select('DISTINCT contract.contractYear', 'year')
+      .orderBy('year', 'DESC')
+      .getRawMany();
+
+    const caseOfficers = await this.userService.findAll();
+
+    return {
+      caseOfficers: caseOfficers.items.map((officer) => ({
+        id: officer.id,
+        username: officer.username,
+        role: officer.role,
+      })),
+      years: years.map((year: { year: number }) => year.year),
+    };
   }
 }

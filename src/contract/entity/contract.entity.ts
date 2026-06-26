@@ -8,6 +8,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinTable,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -22,6 +23,7 @@ export class Contract {
   @Column({ name: 'contract_number', unique: true })
   contractNumber!: string;
 
+  @Index()
   @Column({ name: 'contract_year' })
   contractYear!: number;
 
@@ -65,11 +67,11 @@ export class Contract {
   @Column({ name: 'discount_price', type: 'jsonb', nullable: true })
   discountPrice!: { amount: number; times: number } | null;
 
-  @Column({ name: 'end_register_date', type: 'date' })
-  endRegisterDate!: string;
+  @Column({ name: 'end_register_date', type: 'timestamp' })
+  endRegisterDate!: Date;
 
-  @Column({ name: 'auction_date', type: 'date' })
-  auctionDate!: string;
+  @Column({ name: 'auction_date', type: 'timestamp' })
+  auctionDate!: Date;
 
   @Column({
     name: 'status',

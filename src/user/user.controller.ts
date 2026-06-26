@@ -82,6 +82,7 @@ export class UserController {
   @Patch(':id')
   @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    console.log('UpdateUserDto received in controller:', updateUserDto);
     return this.userService.update(id, updateUserDto);
   }
 
