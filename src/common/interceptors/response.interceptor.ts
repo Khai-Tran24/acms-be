@@ -61,11 +61,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
       this.reflector.get<string>('responseMessage', context.getHandler()) ||
       'Thành công';
 
-    console.log(
-      'Decorator Message:',
-      this.reflector.get<string>('responseMessage', context.getHandler()),
-    );
-
     // Determine final message: use override if exists, otherwise use decorator
     const finalMessage = overrideMessage || decoratorMessage;
 

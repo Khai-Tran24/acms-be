@@ -14,14 +14,14 @@ export class UserService {
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-    const user = this.userRepository.create(createUserDto);
+    const user = this.userRepository.create(createUserDto as User);
     const savedUser = await this.userRepository.save(user);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = savedUser;
     return userWithoutPassword;
   }
 
-  async findAll(query: GetUserQueryDto): Promise<{
+  async findAll(query?: GetUserQueryDto): Promise<{
     items: User[];
     message: string;
     pagination: {
@@ -34,19 +34,19 @@ export class UserService {
     const where: Record<string, any> = {};
 
     // Apply role filter
-    if (query.filterByRole !== undefined) {
+    if (query?.filterByRole !== undefined) {
       where['role'] = query.filterByRole;
     }
 
     // Apply status filter
-    if (query.filterByStatus !== undefined) {
+    if (query?.filterByStatus !== undefined) {
       where['isActive'] = query.filterByStatus;
     }
 
     // Build the query conditions
     let queryConditions: Record<string, any> | Record<string, any>[];
 
-    if (query.search) {
+    if (query?.search) {
       // If search is present, create OR conditions for username/email with AND conditions for role/status
       queryConditions = [
         { username: Like(`%${query.search}%`), ...where },
@@ -60,24 +60,26 @@ export class UserService {
 
     const users = await this.userRepository.find({
       where: queryConditions as any,
-      order: query.sortBy
-        ? { [query.sortBy]: query.sortOrder === 'desc' ? 'DESC' : 'ASC' }
-        : {},
+      order: query?.sortBy
+        ? { [query.sortBy]: query?.sortOrder === 'desc' ? 'DESC' : 'ASC' }
+        : { id: query?.sortOrder === 'asc' ? 'ASC' : 'DESC' },
       skip:
-        query.page && query.limit ? (query.page - 1) * query.limit : undefined,
-      take: query.limit ? query.limit : undefined,
+        query?.page && query?.limit
+          ? (query.page - 1) * query.limit
+          : undefined,
+      take: query?.limit ? query.limit : undefined,
     });
 
     return {
       items: users,
       message: 'Lấy danh sách người dùng thành công',
       pagination: {
-        page: query.page || 1,
-        limit: query.limit || 10,
+        page: query?.page || 1,
+        limit: query?.limit || 10,
         totalItems: await this.userRepository.count({
           where: queryConditions as any,
         }),
-        totalPages: query.limit
+        totalPages: query?.limit
           ? Math.ceil(
               (await this.userRepository.count({
                 where: queryConditions as any,
