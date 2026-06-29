@@ -8,6 +8,7 @@ import { GetContractDto } from './dto/get-contract.dto';
 import { Role } from 'src/common/enum/role.enum';
 import { User } from 'src/user/entity/user.entity';
 import { UserService } from 'src/user/user.service';
+import { GetAnalyticsDataDto } from 'src/analytics/dto/get-analytics-query';
 
 @Injectable()
 export class ContractService {
@@ -46,16 +47,16 @@ export class ContractService {
     const contractData = {
       ...contract,
       createdBy: user?.id,
-      startingPrice: contract.startingPrice.toString() || null,
-      winningPrice: contract.winningPrice.toString() || null,
+      startingPrice: contract.startingPrice || null,
+      winningPrice: contract.winningPrice || null,
     } as unknown as Contract;
 
     return this.contractRepository.save(contractData);
   }
 
   async getAllContracts(
-    query: GetContractDto,
-    user: Partial<User>,
+    query?: GetContractDto,
+    user?: Partial<User>,
   ): Promise<{
     items: Contract[];
     message: string;
@@ -82,46 +83,46 @@ export class ContractService {
         'createdBy.email',
       ]);
 
-    if (user.role !== Role.ADMIN) {
+    if (user?.role !== Role.ADMIN) {
       queryBuilder.where(
         '(contract.caseOfficer = :userId OR contract.createdBy = :userId)',
-        { userId: user.id },
+        { userId: user?.id },
       );
     }
 
-    if (query.search) {
+    if (query?.search) {
       queryBuilder.andWhere(
         '(contract.propertyName ILIKE :search OR contract.contractNumber ILIKE :search)',
         { search: `%${query.search}%` },
       );
     }
 
-    if (query.filterByYear) {
+    if (query?.filterByYear) {
       queryBuilder.andWhere('contract.contractYear = :filterByYear', {
         filterByYear: query.filterByYear,
       });
     }
 
-    if (query.filterByUserId) {
+    if (query?.filterByUserId) {
       queryBuilder.andWhere(
         '(caseOfficer.id = :filterByUserId OR createdBy.id = :filterByUserId)',
         { filterByUserId: query.filterByUserId },
       );
     }
 
-    if (query.endRegisterDate) {
+    if (query?.endRegisterDate) {
       queryBuilder.andWhere('contract.endRegisterDate <= :endRegisterDate', {
         endRegisterDate: query.endRegisterDate,
       });
     }
 
-    if (query.auctionDate) {
+    if (query?.auctionDate) {
       queryBuilder.andWhere('DATE(contract.auctionDate) = DATE(:auctionDate)', {
         auctionDate: query.auctionDate,
       });
     }
 
-    if (query.sortBy) {
+    if (query?.sortBy) {
       const order: 'ASC' | 'DESC' =
         query.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
       if (query.sortBy === 'createdAt') {
@@ -137,8 +138,8 @@ export class ContractService {
       queryBuilder.orderBy('contract.createdAt', 'DESC');
     }
 
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+    const page = query?.page || 1;
+    const limit = query?.limit || 10;
     const skip = (page - 1) * limit;
 
     const [data, total] = await queryBuilder
@@ -190,8 +191,6 @@ export class ContractService {
     id: string,
     updatedContract: Partial<UpdateContractDto>,
   ): Promise<Contract> {
-    console.log('Updated contract data:', updatedContract);
-
     const caseOfficer = await this.userService.findOne({
       id: updatedContract.caseOfficer,
     });
@@ -235,6 +234,164 @@ export class ContractService {
         role: officer.role,
       })),
       years: years.map((year: { year: number }) => year.year),
+    };
+  }
+
+  async computeContractsSummary(query: GetAnalyticsDataDto): Promise<{
+    totalContracts: number;
+    contractsByStatus: Record<string, number>;
+    contractsByPropertyType: Record<string, number>;
+    contractsByPaymentStatus: Record<string, number>;
+  }> {
+    const baseQuery = this.contractRepository.createQueryBuilder('contract');
+
+    if (query?.startDate) {
+      baseQuery.andWhere('contract.createdAt >= :startDate', {
+        startDate: query.startDate,
+      });
+    }
+
+    if (query?.endDate) {
+      baseQuery.andWhere('contract.createdAt <= :endDate', {
+        endDate: query.endDate,
+      });
+    }
+
+    // 1. total count (isolated)
+    const totalContracts = await baseQuery.clone().getCount();
+
+    // 2. status breakdown
+    const statusRows = await baseQuery
+      .clone()
+      .select('contract.status', 'key')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy('contract.status')
+      .getRawMany<{ key: string; count: string }>();
+
+    // 3. property type breakdown
+    const propertyRows = await baseQuery
+      .clone()
+      .select('contract.propertyType', 'key')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy('contract.propertyType')
+      .getRawMany<{ key: string; count: string }>();
+
+    // 4. payment status breakdown
+    const paymentRows = await baseQuery
+      .clone()
+      .select('contract.paymentStatus', 'key')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy('contract.paymentStatus')
+      .getRawMany<{ key: string; count: string }>();
+
+    return {
+      totalContracts,
+      contractsByStatus: this.toMap(statusRows),
+      contractsByPropertyType: this.toMap(propertyRows),
+      contractsByPaymentStatus: this.toMap(paymentRows),
+    };
+  }
+
+  private toMap(rows: { key: string; count: string }[]) {
+    return rows.reduce(
+      (acc, curr) => {
+        acc[curr.key] = Number(curr.count);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  }
+
+  async getContractChartData(query: GetAnalyticsDataDto): Promise<{
+    contractsOverTime: { labels: string[]; data: number[] };
+    percentageOfContractsByStatus: { labels: string[]; data: number[] };
+    percentageOfContractsByPropertyType: { labels: string[]; data: number[] };
+    percentageOfContractsByPaymentStatus: { labels: string[]; data: number[] };
+  }> {
+    const baseQuery = this.contractRepository.createQueryBuilder('contract');
+
+    if (query?.startDate) {
+      baseQuery.andWhere('contract.createdAt >= :startDate', {
+        startDate: query.startDate,
+      });
+    }
+
+    if (query?.endDate) {
+      baseQuery.andWhere('contract.createdAt <= :endDate', {
+        endDate: query.endDate,
+      });
+    }
+
+    // if (query?.period) {
+    //   let dateTrunc: string;
+    //   switch (query.period) {
+    //     case 'day':
+    //       dateTrunc = "TO_CHAR(contract.createdAt, 'YYYY-MM-DD')";
+    //       break;
+    //     case 'week':
+    //       dateTrunc =
+    //         "TO_CHAR(DATE_TRUNC('week', contract.createdAt), 'YYYY-MM-DD')";
+    //       break;
+    //     case 'month':
+    //       dateTrunc = "TO_CHAR(contract.createdAt, 'YYYY-MM')";
+    //       break;
+    //     default:
+    //       throw new Error('Invalid period. Must be one of: day, week, month.');
+    //   }
+
+    //   baseQuery.addSelect(`${dateTrunc} AS period`);
+    // }
+
+    // 1. Contracts over time
+    const contractsOverTimeRows = await baseQuery
+      .clone()
+      .select("TO_CHAR(contract.createdAt, 'YYYY-MM-DD')", 'label')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy("TO_CHAR(contract.createdAt, 'YYYY-MM-DD')")
+      .orderBy("TO_CHAR(contract.createdAt, 'YYYY-MM-DD')", 'ASC')
+      .getRawMany<{ label: string; count: string }>();
+
+    // 2. Percentage of contracts by status
+    const statusRows = await baseQuery
+      .clone()
+      .select('contract.status', 'label')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy('contract.status')
+      .getRawMany<{ label: string; count: string }>();
+
+    // 3. Percentage of contracts by property type
+    const propertyRows = await baseQuery
+      .clone()
+      .select('contract.propertyType', 'label')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy('contract.propertyType')
+      .getRawMany<{ label: string; count: string }>();
+
+    // 4. Percentage of contracts by payment status
+    const paymentRows = await baseQuery
+      .clone()
+      .select('contract.paymentStatus', 'label')
+      .addSelect('COUNT(contract.id)', 'count')
+      .groupBy('contract.paymentStatus')
+      .getRawMany<{ label: string; count: string }>();
+
+    return {
+      contractsOverTime: {
+        labels: contractsOverTimeRows.map((row) => row.label),
+        data: contractsOverTimeRows.map((row) => Number(row.count)),
+      },
+      percentageOfContractsByStatus: {
+        labels: statusRows.map((row) => row.label),
+        data: statusRows.map((row) => Number(row.count)),
+      },
+      percentageOfContractsByPropertyType: {
+        labels: propertyRows.map((row) => row.label),
+        data: propertyRows.map((row) => Number(row.count)),
+      },
+      percentageOfContractsByPaymentStatus: {
+        labels: paymentRows.map((row) => row.label),
+        data: paymentRows.map((row) => Number(row.count)),
+      },
     };
   }
 }
