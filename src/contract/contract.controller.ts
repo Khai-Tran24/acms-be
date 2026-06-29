@@ -87,4 +87,40 @@ export class ContractController {
   ) {
     return this.contractService.updateContract(id, contractData);
   }
+
+  @Patch(':id/discount-price')
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Update the discount price of a contract' })
+  @ApiParam({ name: 'id', description: 'Contract ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        amount: { type: 'number', example: 1000 },
+        times: { type: 'number', example: 2 },
+      },
+      required: ['amount', 'times'],
+    },
+  })
+  updateContractDiscountPrice(
+    @Param('id') id: string,
+    @Body() discountPrice: { amount: number; times: number },
+  ) {
+    return this.contractService.updateContractDiscountPrice(id, discountPrice);
+  }
+
+  @Delete(':id/discount-price/:index')
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Delete a discount price from a contract' })
+  @ApiParam({ name: 'id', description: 'Contract ID' })
+  @ApiParam({
+    name: 'index',
+    description: 'Index of the discount price to delete',
+  })
+  deleteContractDiscountPrice(
+    @Param('id') id: string,
+    @Param('index') index: number,
+  ) {
+    return this.contractService.deleteContractDiscountPrice(id, index);
+  }
 }

@@ -237,6 +237,52 @@ export class ContractService {
     };
   }
 
+  async updateContractDiscountPrice(
+    id: string,
+    discountPrice: { amount: number; times: number },
+  ): Promise<Contract> {
+    const contract = await this.getContractById(id);
+    if (!contract) {
+      throw new Error('Không tìm thấy hợp đồng');
+    }
+
+    const updatedDiscountPrice = contract.discountPrice;
+    updatedDiscountPrice?.unshift(discountPrice);
+
+    await this.contractRepository.update(id, {
+      discountPrice: updatedDiscountPrice,
+    });
+    return this.getContractById(id);
+  }
+
+  async deleteContractDiscountPrice(
+    id: string,
+    index: number,
+  ): Promise<Contract> {
+    const contract = await this.getContractById(id);
+    if (!contract) {
+      throw new Error('Không tìm thấy hợp đồng');
+    }
+
+    const updatedDiscountPrice = contract.discountPrice;
+    if (
+      updatedDiscountPrice &&
+      index >= 0 &&
+      index < updatedDiscountPrice.length
+    ) {
+      updatedDiscountPrice.splice(index, 1);
+    } else {
+      throw new Error('Chỉ số không hợp lệ');
+    }
+
+    updatedDiscountPrice.sort((a, b) => b.times - a.times);
+
+    await this.contractRepository.update(id, {
+      discountPrice: updatedDiscountPrice,
+    });
+    return this.getContractById(id);
+  }
+
   async computeContractsSummary(query: GetAnalyticsDataDto): Promise<{
     totalContracts: number;
     contractsByStatus: Record<string, number>;
@@ -321,26 +367,6 @@ export class ContractService {
         endDate: query.endDate,
       });
     }
-
-    // if (query?.period) {
-    //   let dateTrunc: string;
-    //   switch (query.period) {
-    //     case 'day':
-    //       dateTrunc = "TO_CHAR(contract.createdAt, 'YYYY-MM-DD')";
-    //       break;
-    //     case 'week':
-    //       dateTrunc =
-    //         "TO_CHAR(DATE_TRUNC('week', contract.createdAt), 'YYYY-MM-DD')";
-    //       break;
-    //     case 'month':
-    //       dateTrunc = "TO_CHAR(contract.createdAt, 'YYYY-MM')";
-    //       break;
-    //     default:
-    //       throw new Error('Invalid period. Must be one of: day, week, month.');
-    //   }
-
-    //   baseQuery.addSelect(`${dateTrunc} AS period`);
-    // }
 
     // 1. Contracts over time
     const contractsOverTimeRows = await baseQuery
