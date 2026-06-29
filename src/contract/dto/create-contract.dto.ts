@@ -56,7 +56,7 @@ export class CreateContractDto {
 
   @ApiProperty()
   @IsNumber()
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => Number)
   @IsGreaterThan('startingPrice', {
     message: 'Giá trúng phải lớn hơn hoặc bằng giá khởi điểm',

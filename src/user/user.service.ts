@@ -125,4 +125,26 @@ export class UserService {
 
     return { message: 'Xóa tài khoản thành công' };
   }
+
+  async computeUserStatistics(): Promise<{
+    activeUsers: number;
+    inactiveUsers: number;
+  }> {
+    const { activateusers: activateUsers, inactiveusers: inactiveUsers } =
+      (await this.userRepository
+        .createQueryBuilder('user')
+        .select([
+          `COUNT(CASE WHEN user.isActive = true THEN 1 END) AS activateusers`,
+          `COUNT(CASE WHEN user.isActive = false THEN 1 END) AS inactiveusers`,
+        ])
+        .getRawOne()) as {
+        activateusers?: string;
+        inactiveusers?: string;
+      };
+
+    return {
+      activeUsers: Number(activateUsers),
+      inactiveUsers: Number(inactiveUsers),
+    };
+  }
 }

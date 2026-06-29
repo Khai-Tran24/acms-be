@@ -65,7 +65,7 @@ export class Contract {
   winningPrice!: string | null;
 
   @Column({ name: 'discount_price', type: 'jsonb', nullable: true })
-  discountPrice!: { amount: number; times: number } | null;
+  discountPrice!: { amount: number; times: number }[] | null;
 
   @Column({ name: 'end_register_date', type: 'timestamp' })
   endRegisterDate!: Date;
