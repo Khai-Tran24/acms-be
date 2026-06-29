@@ -61,6 +61,7 @@ export class Contract {
     precision: 15,
     scale: 2,
     nullable: true,
+    default: null,
   })
   winningPrice!: string | null;
 
