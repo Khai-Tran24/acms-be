@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ContractService } from 'src/contract/contract.service';
 import { UserService } from 'src/user/user.service';
 import { GetAnalyticsDataDto } from './dto/get-analytics-query';
+import {
+  ContractStatus,
+  PaymentStatus,
+  PropertyType,
+} from 'src/common/enum/contract.enum';
 
 @Injectable()
 export class AnalyticsService {
@@ -39,15 +44,31 @@ export class AnalyticsService {
     };
   }
 
+  private async getRecentContracts(): Promise<RecentContractsData[]> {
+    const recentContracts = await this.contractService.getRecentContracts();
+    console.log('Recent Contracts:', recentContracts); // Debugging line
+
+    return recentContracts.map((contract) => ({
+      id: contract.id,
+      contractNumber: contract.contractNumber,
+      propertyName: contract.propertyName,
+      propertyType: contract.propertyType,
+      status: contract.status,
+      paymentStatus: contract.paymentStatus,
+    }));
+  }
+
   async getAnalytics(query: GetAnalyticsDataDto): Promise<AnalyticsData> {
-    const [summaryData, chartData] = await Promise.all([
+    const [summaryData, chartData, recentContracts] = await Promise.all([
       this.getSummaryData(query),
       this.getChartData(query),
+      this.getRecentContracts(),
     ]);
 
     return {
       summary: summaryData,
       chart: chartData,
+      recentContracts: recentContracts,
     };
   }
 }
@@ -55,6 +76,16 @@ export class AnalyticsService {
 interface AnalyticsData {
   summary: SummaryData;
   chart: ChartData;
+  recentContracts: RecentContractsData[];
+}
+
+interface RecentContractsData {
+  id: string;
+  contractNumber: string;
+  propertyName: string;
+  propertyType: PropertyType;
+  status: ContractStatus;
+  paymentStatus: PaymentStatus;
 }
 
 interface ChartData {
