@@ -9,6 +9,11 @@ import { Role } from 'src/common/enum/role.enum';
 import { User } from 'src/user/entity/user.entity';
 import { UserService } from 'src/user/user.service';
 import { GetAnalyticsDataDto } from 'src/analytics/dto/get-analytics-query';
+import {
+  ContractStatus,
+  PaymentStatus,
+  PropertyType,
+} from 'src/common/enum/contract.enum';
 
 @Injectable()
 export class ContractService {
@@ -83,7 +88,7 @@ export class ContractService {
         'createdBy.email',
       ]);
 
-    if (user?.role !== Role.ADMIN) {
+    if (user && user.role !== Role.ADMIN) {
       queryBuilder.where(
         '(contract.caseOfficer = :userId OR contract.createdBy = :userId)',
         { userId: user?.id },
@@ -420,4 +425,39 @@ export class ContractService {
       },
     };
   }
+
+  async getRecentContracts(): Promise<RecentContractsData[]> {
+    const recentContracts = await this.contractRepository
+      .createQueryBuilder('contract')
+      .select([
+        'contract.id',
+        'contract.contractNumber',
+        'contract.propertyName',
+        'contract.propertyType',
+        'contract.status',
+        'contract.paymentStatus',
+        'contract.createdAt',
+      ])
+      .orderBy('contract.createdAt', 'DESC')
+      .take(5)
+      .getMany();
+
+    return recentContracts.map((contract) => ({
+      id: contract.id,
+      contractNumber: contract.contractNumber,
+      propertyName: contract.propertyName,
+      propertyType: contract.propertyType,
+      status: contract.status,
+      paymentStatus: contract.paymentStatus,
+    }));
+  }
+}
+
+interface RecentContractsData {
+  id: string;
+  contractNumber: string;
+  propertyName: string;
+  propertyType: PropertyType;
+  status: ContractStatus;
+  paymentStatus: PaymentStatus;
 }
