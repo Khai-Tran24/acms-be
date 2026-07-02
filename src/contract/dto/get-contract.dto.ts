@@ -5,9 +5,31 @@ import {
   IsDateString,
   IsNumber,
   Min,
+  IsArray,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export enum ContractExportColumn {
+  ID = 'id',
+  CONTRACT_NUMBER = 'contractNumber',
+  CONTRACT_YEAR = 'contractYear',
+  PROPERTY_NAME = 'propertyName',
+  PROPERTY_TYPE = 'propertyType',
+  PROPERTY_OWNER = 'propertyOwner',
+  CASE_OFFICER = 'caseOfficer',
+  STARTING_PRICE = 'startingPrice',
+  WINNING_PRICE = 'winningPrice',
+  DISCOUNT_PRICE = 'discountPrice',
+  END_REGISTER_DATE = 'endRegisterDate',
+  AUCTION_DATE = 'auctionDate',
+  STATUS = 'status',
+  WINNER = 'winner',
+  PAYMENT_STATUS = 'paymentStatus',
+  CREATED_BY = 'createdBy',
+  CREATED_AT = 'createdAt',
+  UPDATED_AT = 'updatedAt',
+}
 
 export class GetContractDto {
   @ApiPropertyOptional({
@@ -43,7 +65,8 @@ export class GetContractDto {
     description: 'Bộ lọc theo năm hợp đồng (theo năm)',
   })
   @IsOptional()
-  @IsDateString()
+  @Type(() => Number)
+  @IsNumber()
   filterByYear?: number;
 
   @ApiPropertyOptional({
@@ -77,4 +100,37 @@ export class GetContractDto {
   @IsNumber()
   @Min(1)
   limit?: number = 10;
+}
+
+export class ExportToExcelParamsDto extends GetContractDto {
+  @ApiPropertyOptional({
+    description:
+      'Danh sách cột cần export. Có thể truyền dạng CSV: columns=contractNumber,propertyName hoặc truyền nhiều query columns=contractNumber&columns=propertyName. Nếu bỏ trống sẽ export tất cả cột mặc định.',
+    enum: ContractExportColumn,
+    isArray: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) {
+      return value.flatMap((item) =>
+        String(item)
+          .split(',')
+          .map((column) => column.trim())
+          .filter(Boolean),
+      );
+    }
+
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((column) => column.trim())
+        .filter(Boolean);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return value;
+  })
+  @IsArray()
+  @IsEnum(ContractExportColumn, { each: true })
+  columns?: ContractExportColumn[];
 }
