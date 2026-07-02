@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { ContractService } from './contract.service';
 import { CreateContractDto } from './dto/create-contract.dto';
@@ -17,12 +18,14 @@ import {
   ApiOperation,
   ApiTags,
   ApiParam,
+  ApiProduces,
 } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/role.decorator';
 import { Role } from 'src/common/enum/role.enum';
 import { UpdateContractDto } from './dto/update-contract.dto';
-import { GetContractDto } from './dto/get-contract.dto';
+import { ExportToExcelParamsDto, GetContractDto } from './dto/get-contract.dto';
 import { User } from 'src/user/entity/user.entity';
+import type { Response } from 'express';
 
 @ApiBearerAuth()
 @ApiTags('Contracts')
@@ -58,6 +61,35 @@ export class ContractController {
   getContractFilterValue(@Req() req: { user: Partial<User> }) {
     console.log('User in getContractFilterValue:', req.user);
     return this.contractService.getContractFilterValue(req.user);
+  }
+
+  @Get('export/excel')
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
+  @ApiOperation({ summary: 'Export contracts to Excel' })
+  @ApiProduces(
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  )
+  async exportContractsToExcel(
+    @Query() query: ExportToExcelParamsDto,
+    @Req() req: { user: Partial<User> },
+    @Res() res: Response,
+  ) {
+    const buffer = await this.contractService.exportContractsToExcel(
+      query,
+      req.user,
+    );
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="contracts-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    );
+    res.setHeader('Content-Length', buffer.length);
+
+    return res.send(buffer);
   }
 
   @Get(':id')

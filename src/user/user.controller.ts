@@ -27,7 +27,7 @@ export class UserController {
   }
 
   @Get()
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.SECRETARY, Role.AUCTIONEER)
   @ApiQuery({
     name: 'search',
     required: false,
