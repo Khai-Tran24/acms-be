@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Contract } from './entity/contract.entity';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateContractDto } from './dto/create-contract.dto';
-import { GetContractDto } from './dto/get-contract.dto';
+import {
+  ContractExportColumn,
+  ExportToExcelParamsDto,
+  GetContractDto,
+} from './dto/get-contract.dto';
 import { Role } from 'src/common/enum/role.enum';
 import { User } from 'src/user/entity/user.entity';
 import { UserService } from 'src/user/user.service';
@@ -14,6 +18,14 @@ import {
   PaymentStatus,
   PropertyType,
 } from 'src/common/enum/contract.enum';
+import * as ExcelJS from 'exceljs';
+
+type ContractExcelColumnConfig = {
+  header: string;
+  key: ContractExportColumn;
+  width: number;
+  value: (contract: Contract) => string | number | null;
+};
 
 @Injectable()
 export class ContractService {
@@ -23,55 +35,10 @@ export class ContractService {
     private readonly userService: UserService,
   ) {}
 
-  async createContract(
-    contract: CreateContractDto,
-    userId: string | undefined,
-  ): Promise<Contract> {
-    const existingContract = await this.contractRepository.findOne({
-      where: { contractNumber: contract.contractNumber },
-    });
-
-    console.log('Existing contract:', contract);
-
-    if (existingContract) {
-      throw new Error(
-        'Đã tồn tại hợp đồng với số quy chế này. Vui lòng chọn số quy chế khác.',
-      );
-    }
-
-    if (!userId) {
-      throw new Error(
-        'Người dùng không hợp lệ. Vui lòng đăng nhập để tạo hợp đồng.',
-      );
-    }
-
-    const [user] = await Promise.all([
-      this.userService.findOne({ id: userId }),
-    ]);
-
-    const contractData = {
-      ...contract,
-      createdBy: user?.id,
-      startingPrice: contract.startingPrice || null,
-      winningPrice: contract.winningPrice || null,
-    } as unknown as Contract;
-
-    return this.contractRepository.save(contractData);
-  }
-
-  async getAllContracts(
+  private buildContractQuery(
     query?: GetContractDto,
     user?: Partial<User>,
-  ): Promise<{
-    items: Contract[];
-    message: string;
-    pagination: {
-      page: number;
-      limit: number;
-      totalItems: number;
-      totalPages: number;
-    };
-  }> {
+  ): SelectQueryBuilder<Contract> {
     const queryBuilder = this.contractRepository
       .createQueryBuilder('contract')
       .leftJoinAndSelect('contract.caseOfficer', 'caseOfficer')
@@ -142,6 +109,60 @@ export class ContractService {
     } else {
       queryBuilder.orderBy('contract.createdAt', 'DESC');
     }
+
+    return queryBuilder;
+  }
+
+  async createContract(
+    contract: CreateContractDto,
+    userId: string | undefined,
+  ): Promise<Contract> {
+    const existingContract = await this.contractRepository.findOne({
+      where: { contractNumber: contract.contractNumber },
+    });
+
+    console.log('Existing contract:', contract);
+
+    if (existingContract) {
+      throw new Error(
+        'Đã tồn tại hợp đồng với số quy chế này. Vui lòng chọn số quy chế khác.',
+      );
+    }
+
+    if (!userId) {
+      throw new Error(
+        'Người dùng không hợp lệ. Vui lòng đăng nhập để tạo hợp đồng.',
+      );
+    }
+
+    const [user] = await Promise.all([
+      this.userService.findOne({ id: userId }),
+    ]);
+
+    const contractData = {
+      ...contract,
+      createdBy: user?.id,
+      startingPrice: contract.startingPrice || null,
+      winningPrice: contract.winningPrice || null,
+    } as unknown as Contract;
+
+    return this.contractRepository.save(contractData);
+  }
+
+  async getAllContracts(
+    query?: GetContractDto,
+    user?: Partial<User>,
+  ): Promise<{
+    items: Contract[];
+    message: string;
+    pagination: {
+      page: number;
+      limit: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  }> {
+    const queryBuilder = this.buildContractQuery(query, user);
 
     const page = query?.page || 1;
     const limit = query?.limit || 10;
@@ -286,6 +307,191 @@ export class ContractService {
       discountPrice: updatedDiscountPrice,
     });
     return this.getContractById(id);
+  }
+
+  private formatDate(value?: Date | string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    return new Date(value).toISOString();
+  }
+
+  private formatPerson(
+    person?: { name: string; phone: string } | null,
+  ): string {
+    if (!person) {
+      return '';
+    }
+
+    if (person.name && person.phone) {
+      return `${person.name} (${person.phone})`;
+    }
+
+    return person.name || person.phone || '';
+  }
+
+  private formatDiscountPrice(
+    discountPrice?: { amount: number; times: number }[] | null,
+  ): string {
+    if (!discountPrice?.length) {
+      return '';
+    }
+
+    return discountPrice
+      .map((discount) => `${discount.amount} x ${discount.times}`)
+      .join(', ');
+  }
+
+  private getContractExcelColumns(): ContractExcelColumnConfig[] {
+    return [
+      {
+        header: 'ID',
+        key: ContractExportColumn.ID,
+        width: 12,
+        value: (contract) => contract.id,
+      },
+      {
+        header: 'Số hợp đồng',
+        key: ContractExportColumn.CONTRACT_NUMBER,
+        width: 20,
+        value: (contract) => contract.contractNumber,
+      },
+      {
+        header: 'Năm',
+        key: ContractExportColumn.CONTRACT_YEAR,
+        width: 15,
+        value: (contract) => contract.contractYear,
+      },
+      {
+        header: 'Tên tài sản',
+        key: ContractExportColumn.PROPERTY_NAME,
+        width: 30,
+        value: (contract) => contract.propertyName,
+      },
+      {
+        header: 'Loại tài sản',
+        key: ContractExportColumn.PROPERTY_TYPE,
+        width: 20,
+        value: (contract) => contract.propertyType,
+      },
+      {
+        header: 'Chủ sở hữu tài sản',
+        key: ContractExportColumn.PROPERTY_OWNER,
+        width: 25,
+        value: (contract) => this.formatPerson(contract.propertyOwner),
+      },
+      {
+        header: 'Người thụ lý',
+        key: ContractExportColumn.CASE_OFFICER,
+        width: 25,
+        value: (contract) => contract.caseOfficer?.username || '',
+      },
+      {
+        header: 'Giá khởi điểm',
+        key: ContractExportColumn.STARTING_PRICE,
+        width: 20,
+        value: (contract) => contract.startingPrice,
+      },
+      {
+        header: 'Giá bán',
+        key: ContractExportColumn.WINNING_PRICE,
+        width: 20,
+        value: (contract) => contract.winningPrice,
+      },
+      {
+        header: 'Giá giảm',
+        key: ContractExportColumn.DISCOUNT_PRICE,
+        width: 24,
+        value: (contract) => this.formatDiscountPrice(contract.discountPrice),
+      },
+      {
+        header: 'Ngày kết thúc đăng ký',
+        key: ContractExportColumn.END_REGISTER_DATE,
+        width: 24,
+        value: (contract) => this.formatDate(contract.endRegisterDate),
+      },
+      {
+        header: 'Ngày đấu giá',
+        key: ContractExportColumn.AUCTION_DATE,
+        width: 24,
+        value: (contract) => this.formatDate(contract.auctionDate),
+      },
+      {
+        header: 'Trạng thái',
+        key: ContractExportColumn.STATUS,
+        width: 20,
+        value: (contract) => contract.status,
+      },
+      {
+        header: 'Người trúng đấu giá',
+        key: ContractExportColumn.WINNER,
+        width: 25,
+        value: (contract) => this.formatPerson(contract.winner),
+      },
+      {
+        header: 'Trạng thái thanh toán',
+        key: ContractExportColumn.PAYMENT_STATUS,
+        width: 20,
+        value: (contract) => contract.paymentStatus,
+      },
+      {
+        header: 'Người tạo',
+        key: ContractExportColumn.CREATED_BY,
+        width: 25,
+        value: (contract) => contract.createdBy?.username || '',
+      },
+      {
+        header: 'Ngày tạo',
+        key: ContractExportColumn.CREATED_AT,
+        width: 24,
+        value: (contract) => this.formatDate(contract.createdAt),
+      },
+      {
+        header: 'Ngày cập nhật',
+        key: ContractExportColumn.UPDATED_AT,
+        width: 24,
+        value: (contract) => this.formatDate(contract.updatedAt),
+      },
+    ];
+  }
+
+  async exportContractsToExcel(
+    query?: ExportToExcelParamsDto,
+    user?: Partial<User>,
+  ): Promise<Buffer> {
+    const contracts = await this.buildContractQuery(query, user).getMany();
+    const allColumns = this.getContractExcelColumns();
+    const selectedColumns = query?.columns?.length
+      ? allColumns.filter((column) => query.columns?.includes(column.key))
+      : allColumns;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Contracts');
+
+    worksheet.columns = selectedColumns.map((column) => ({
+      header: column.header,
+      key: column.key,
+      width: column.width,
+    }));
+
+    contracts.forEach((contract) => {
+      worksheet.addRow(
+        selectedColumns.reduce<Record<string, string | number | null>>(
+          (row, column) => {
+            row[column.key] = column.value(contract);
+            return row;
+          },
+          {},
+        ),
+      );
+    });
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   async computeContractsSummary(query: GetAnalyticsDataDto): Promise<{
