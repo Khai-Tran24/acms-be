@@ -121,8 +121,6 @@ export class ContractService {
       where: { contractNumber: contract.contractNumber },
     });
 
-    console.log('Existing contract:', contract);
-
     if (existingContract) {
       throw new Error(
         'Đã tồn tại hợp đồng với số quy chế này. Vui lòng chọn số quy chế khác.',
@@ -268,12 +266,10 @@ export class ContractService {
     discountPrice: { amount: number; times: number },
   ): Promise<Contract> {
     const contract = await this.getContractById(id);
-    if (!contract) {
-      throw new Error('Không tìm thấy hợp đồng');
-    }
 
-    const updatedDiscountPrice = contract.discountPrice;
-    updatedDiscountPrice?.unshift(discountPrice);
+    const updatedDiscountPrice = Array.isArray(contract.discountPrice)
+      ? [discountPrice, ...contract.discountPrice]
+      : [discountPrice];
 
     await this.contractRepository.update(id, {
       discountPrice: updatedDiscountPrice,
