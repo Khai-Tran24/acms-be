@@ -120,7 +120,6 @@ export class AuthService {
     }
 
     const user = await this.userService.findOne({ email });
-    console.log('User found for OTP verification:', user);
     if (!user) {
       throw new UnauthorizedException('Email không tồn tại');
     }

@@ -46,7 +46,6 @@ export class AnalyticsService {
 
   private async getRecentContracts(): Promise<RecentContractsData[]> {
     const recentContracts = await this.contractService.getRecentContracts();
-    console.log('Recent Contracts:', recentContracts); // Debugging line
 
     return recentContracts.map((contract) => ({
       id: contract.id,
